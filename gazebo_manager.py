@@ -2,6 +2,7 @@ import tornado
 import tornado.ioloop
 import tornado.web
 import tornado.template
+import atexit
 from tornado.websocket import WebSocketHandler
 
 import json
@@ -34,11 +35,27 @@ if __name__ == '__main__':
     gazebo_ports = (11345, 11346, 11347, 11348)
     ros_ports = (11350, 11351, 11352, 11353)
     addr = "127.0.0.1"
+
+    gz_procs = []
     
     for gz_worker in zip(gazebo_ports, ros_ports):
         gz_port, ros_port = gz_worker
         gzw = GazeboWorker(job_queue, quiet=True, gz_master=(addr, gz_port), ros_master=(addr, ros_port))
         gzw.start()
+        gz_procs.append(gzw)
+
+    def cleanup():
+        print("gracefully shutdown...")
+        for proc in gz_procs:
+            job_queue.put("exit") 
+            proc.shutdown = True
+            proc.terminate()
+        for proc in gz_procs:
+            proc.join()
+            print("shutting down gazebo_worker @ %s..." % proc.gz_master_uri)
+
+
+    atexit.register(cleanup)
 
     print("listening on port: 9090")
 

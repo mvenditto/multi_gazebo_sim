@@ -69,7 +69,6 @@ class GazeboWorker(multiprocessing.Process):
         print("instancing gazebo_server proxy @ %s" % self.gz_master_uri)
         #instance gazebo proxy -- blocks until gazebo services are available
         self.gz_proxy = GazeboProxy("gz_server_%d" % self.gz_port)
-        print("all services online, done!")
 
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
@@ -105,6 +104,8 @@ class GazeboWorker(multiprocessing.Process):
 
         while not self.shutdown:
             job = self.queue.get()
+            if job == 'exit':
+                break
             self._run_simulation(job)
     
  

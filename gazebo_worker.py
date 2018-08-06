@@ -1,3 +1,4 @@
+import numpy as np
 import multiprocessing
 import rospy
 import time
@@ -10,15 +11,17 @@ from os import environ as env
 from subprocess import Popen
 from gazebo_proxy import GazeboProxy
 from std_msgs.msg import Float32MultiArray
-from keras.models import Model   
-from keras.layers import * 
+
+from pybrain.structure.modules.relulayer import ReluLayer
+from pybrain.structure import SoftmaxLayer
+from pybrain.tools.shortcuts import buildNetwork
 
 class GazeboWorker(multiprocessing.Process):
     def __init__(self, queue, 
             gz_master=('127.0.0.1', 11346), 
             ros_master=('127.0.0.1', 11350), 
             world="custom_empty.world", 
-            quiet=True,
+            quiet=False,
             audit_ws_uri="ws://127.0.0.1:9090/simulation-audit"
         ):
         super(GazeboWorker, self).__init__()
@@ -43,12 +46,8 @@ class GazeboWorker(multiprocessing.Process):
         self.audit_ws = None 
 
         self.brain = None
+        self.running_sim = False
 
- 
-    @staticmethod
-    def joints_callback(self, data):
-        pass
- 
     def spawn_process(self, args):
         if not self.verbose:
             Popen(args, stdin=None, stdout=open(os.devnull, 'wb'), stderr=open(os.devnull, 'wb'))
@@ -78,7 +77,7 @@ class GazeboWorker(multiprocessing.Process):
        
     def _start_ros_node(self):
         self.ros_node = rospy.init_node("gz_worker_%d" % self.gz_port, anonymous=True)
-        self.joints_subscriber = rospy.Subscriber('/pexod/joint_positions', Float32MultiArray, self.joints_callback)
+        self.joints_subscriber = rospy.Subscriber('/pexod/joint_positions', Float32MultiArray, self.move_model)
         self.joints_publisher = rospy.Publisher('/pexod/vel_cmd', Float32MultiArray, queue_size=1)
         self.rate = rospy.Rate(1)
  
@@ -87,12 +86,18 @@ class GazeboWorker(multiprocessing.Process):
         self.gz_proxy = GazeboProxy("gz_server_%d" % self.gz_port)
 
     def _start_neural_net(self):
-        inpTensor = Input((12,))      
-        hidden1Out = Dense(units=12)(inpTensor)     
-        finalOut = Dense(units=12)(hidden1Out)
-        model = Model(inpTensor,finalOut)
-        self.brain = model
+        self.brain = buildNetwork(12, 12, 12, hiddenclass=ReluLayer, outclass=SoftmaxLayer)
 
+    def _feed_brain(joint_values):
+        return model.activate(joint_values.data)
+         
+    def move_model(self, joint_values):
+        if self.running_sim:
+            res = feed_brain(joint_values).tolist()
+            move_joint(res, pub)
+
+    def _init_net(self, weights):
+        pass
 
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
@@ -104,6 +109,7 @@ class GazeboWorker(multiprocessing.Process):
             
         self.gz_proxy.reset_world()
         self.gz_proxy.unpause()    
+        self._init_net(sim_data['weights'])
 
         sim_start = sim_now = self._get_sim_time()
         elapsed_time = 0
@@ -111,7 +117,8 @@ class GazeboWorker(multiprocessing.Process):
 
         first = True
         last_pos = (0,0)
-        
+
+        self.running_sim = True
         while(sim_now - sim_start <= sim_duration):
             model_state = self.gz_proxy.get_model_state('pexod', '')
             model_pos = model_state.pose.position
@@ -133,6 +140,7 @@ class GazeboWorker(multiprocessing.Process):
             sim_now = self._get_sim_time()
             
         self.gz_proxy.pause()
+        self.running_sim = False
         client.send(json.dumps({"type": "sim_end"}))
         client.close()
         self.sim_seq += 1    

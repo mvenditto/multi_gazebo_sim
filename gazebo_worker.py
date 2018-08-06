@@ -4,14 +4,23 @@ import time
 import os
 import subprocess
 import os
+import json
+import websocket as ws
 from os import environ as env
 from subprocess import Popen
 from gazebo_proxy import GazeboProxy
 from std_msgs.msg import Float32MultiArray
-import websocket as ws
+from keras.models import Model   
+from keras.layers import * 
 
 class GazeboWorker(multiprocessing.Process):
-    def __init__(self, queue, gz_master=('127.0.0.1', 11346), ros_master=('127.0.0.1', 11350), world="custom_empty_0.world",quiet=True):
+    def __init__(self, queue, 
+            gz_master=('127.0.0.1', 11346), 
+            ros_master=('127.0.0.1', 11350), 
+            world="custom_empty.world", 
+            quiet=True,
+            audit_ws_uri="ws://127.0.0.1:9090/simulation-audit"
+        ):
         super(GazeboWorker, self).__init__()
         self.gz_master_uri = "http://%s:%d" % gz_master
         self.ros_master_uri = "http://%s:%d" % ros_master
@@ -21,13 +30,20 @@ class GazeboWorker(multiprocessing.Process):
         self.verbose = not quiet
         self.queue = queue
  
+        self.sim_seq = 0
         self.gz_proxy = None
         self.ros_node = None
         self.joints_publisher = None
         self.joints_subscriber = None
         self.shutdown = False
         self.rate = None
- 
+
+        self.send_velocity_thresh = 1.0
+        self.audit_ws_uri = audit_ws_uri
+        self.audit_ws = None 
+
+        self.brain = None
+
  
     @staticmethod
     def joints_callback(self, data):
@@ -70,20 +86,57 @@ class GazeboWorker(multiprocessing.Process):
         #instance gazebo proxy -- blocks until gazebo services are available
         self.gz_proxy = GazeboProxy("gz_server_%d" % self.gz_port)
 
+    def _start_neural_net(self):
+        inpTensor = Input((12,))      
+        hidden1Out = Dense(units=12)(inpTensor)     
+        finalOut = Dense(units=12)(hidden1Out)
+        model = Model(inpTensor,finalOut)
+        self.brain = model
+
+
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
-        
+        if self.audit_ws is None:
+            self.audit_ws = ws.create_connection(self.audit_ws_uri)
+
+        sim_id = '{0}_{1}'.format(self.gz_port, self.sim_seq)
+        print("starting simulation_run[{}]".format(sim_id))
+            
+        self.gz_proxy.reset_world()
+        self.gz_proxy.unpause()    
+
         sim_start = sim_now = self._get_sim_time()
         elapsed_time = 0
         sim_duration = float(sim_data['duration'])
+
+        first = True
+        last_pos = (0,0)
         
         while(sim_now - sim_start <= sim_duration):
-            # do stuff
-            sim_now = self._get_sim_time()
-            client.send("current sim time: %s, gz_server_uri: %s, ros_master_uri" % (str(sim_now), self.gz_master_uri, self.ros_master_uri))
+            model_state = self.gz_proxy.get_model_state('pexod', '')
+            model_pos = model_state.pose.position
+            dx = abs(model_pos.x) - abs(last_pos[0])
+            dy = abs(model_pos.y) - abs(last_pos[1])
 
-        client.close()    
-        
+            if first or (dx >= self.send_velocity_thresh or dy >= self.send_velocity_thresh):    
+                msg = {
+                    "sim_id": sim_id,
+                    "type": "sim_data",
+                    "x": model_pos.x,
+                    "y": model_pos.y,
+                    "z": model_pos.z
+                }
+                self.audit_ws.send(json.dumps(msg))
+                first = False
+
+            last_pos = (model_pos.x, model_pos.y)
+            sim_now = self._get_sim_time()
+            
+        self.gz_proxy.pause()
+        client.send(json.dumps({"type": "sim_end"}))
+        client.close()
+        self.sim_seq += 1    
+        print("simulation_run[{}] terminated".format(sim_id))
  
     def run(self):
         # setup environment for this process
@@ -99,14 +152,21 @@ class GazeboWorker(multiprocessing.Process):
         #create ros node
         print("launching ros node")
         self._start_ros_node()
+
+        print("creating neaural_network model")
+        self._start_neural_net()
  
         print("gazebo_worker %s is now online!" % self.gz_master_uri)
 
         while not self.shutdown:
             job = self.queue.get()
+            print("{0}|{1} <- {2}".format(self.ros_master_uri, self.gz_master_uri, job))
             if job == 'exit':
                 break
             self._run_simulation(job)
+
+        if self.audit_ws is not None:
+            self.audit_ws.close()
     
  
 if __name__ == '__main__':

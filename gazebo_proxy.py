@@ -1,5 +1,5 @@
 from std_srvs.srv import Empty
-from gazebo_msgs.srv import GetWorldProperties
+from gazebo_msgs.srv import GetWorldProperties, GetModelState
 import rospy
 import os
  
@@ -13,7 +13,8 @@ class GazeboProxy():
                         ("/%s/unpause_physics" % self.ns, Empty),
                         ("/%s/reset_simulation" % self.ns, Empty),
                         ("/%s/reset_world" % self.ns, Empty),
-                        ("/%s/get_world_properties" % self.ns, GetWorldProperties)
+                        ("/%s/get_world_properties" % self.ns, GetWorldProperties),
+                        ("/%s/get_model_state" % self.ns, GetModelState)
                 ]
  
  
@@ -35,5 +36,8 @@ class GazeboProxy():
                 self.gazebo_services["/%s/reset_world" % self.ns]()  
  
         def get_world_properties(self):
-                return self.gazebo_services["/%s/get_world_properties" % self.ns]()                
+                return self.gazebo_services["/%s/get_world_properties" % self.ns]()      
+
+        def get_model_state(self, model_name, rel_entity_name):
+                return self.gazebo_services["/%s/get_model_state" % self.ns](model_name, rel_entity_name)        
  

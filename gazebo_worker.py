@@ -88,63 +88,74 @@ class GazeboWorker(multiprocessing.Process):
     def _start_neural_net(self):
         self.brain = buildNetwork(12, 12, 12, hiddenclass=ReluLayer, outclass=SoftmaxLayer)
 
-    def _feed_brain(joint_values):
-        return model.activate(joint_values.data)
+    def _feed_brain(self, joint_values):
+        return self.brain.activate(joint_values.data)
          
+    def _move_joint(self, values, pub):
+        msg = Float32MultiArray(data=values)
+        pub.publish(msg)
+
     def move_model(self, joint_values):
         if self.running_sim:
-            res = feed_brain(joint_values).tolist()
-            move_joint(res, pub)
+            res = self._feed_brain(joint_values).tolist()
+            self._move_joint(res, self.joints_publisher)
 
     def _init_net(self, weights):
-        pass
+        self.brain._setParameters(np.array(weights))
 
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
+        print(client)
         if self.audit_ws is None:
             self.audit_ws = ws.create_connection(self.audit_ws_uri)
 
-        sim_id = '{0}_{1}'.format(self.gz_port, self.sim_seq)
-        print("starting simulation_run[{}]".format(sim_id))
+        sim_id = "{0}_{1}".format(self.gz_port, self.sim_seq)
+        print("starting simulation_run[{0} -> {1}]".format(sim_id, sim_data["client_ws"]))
+
+        try:
+            self.gz_proxy.reset_world()
+            self.gz_proxy.unpause()    
+            self._init_net(sim_data['weights'])
+
+            sim_start = sim_now = self._get_sim_time()
+            elapsed_time = 0
+            sim_duration = float(sim_data['duration'])
+
+            first = True
+            last_pos = (0,0)
+
+            sim_status = "completed"
+            self.running_sim = True
+            while(sim_now - sim_start <= sim_duration):
+                model_state = self.gz_proxy.get_model_state('pexod', '')
+                model_pos = model_state.pose.position
+                dx = abs(model_pos.x) - abs(last_pos[0])
+                dy = abs(model_pos.y) - abs(last_pos[1])
+
+                if first or (dx >= self.send_velocity_thresh or dy >= self.send_velocity_thresh):    
+                    msg = {
+                        "sim_id": sim_id,
+                        "type": "sim_data",
+                        "x": model_pos.x,
+                        "y": model_pos.y,
+                        "z": model_pos.z
+                    }
+                    self.audit_ws.send(json.dumps(msg))
+                    first = False
+
+                last_pos = (model_pos.x, model_pos.y)
+                sim_now = self._get_sim_time()
             
-        self.gz_proxy.reset_world()
-        self.gz_proxy.unpause()    
-        self._init_net(sim_data['weights'])
-
-        sim_start = sim_now = self._get_sim_time()
-        elapsed_time = 0
-        sim_duration = float(sim_data['duration'])
-
-        first = True
-        last_pos = (0,0)
-
-        self.running_sim = True
-        while(sim_now - sim_start <= sim_duration):
-            model_state = self.gz_proxy.get_model_state('pexod', '')
-            model_pos = model_state.pose.position
-            dx = abs(model_pos.x) - abs(last_pos[0])
-            dy = abs(model_pos.y) - abs(last_pos[1])
-
-            if first or (dx >= self.send_velocity_thresh or dy >= self.send_velocity_thresh):    
-                msg = {
-                    "sim_id": sim_id,
-                    "type": "sim_data",
-                    "x": model_pos.x,
-                    "y": model_pos.y,
-                    "z": model_pos.z
-                }
-                self.audit_ws.send(json.dumps(msg))
-                first = False
-
-            last_pos = (model_pos.x, model_pos.y)
-            sim_now = self._get_sim_time()
-            
-        self.gz_proxy.pause()
-        self.running_sim = False
-        client.send(json.dumps({"type": "sim_end"}))
-        client.close()
-        self.sim_seq += 1    
-        print("simulation_run[{}] terminated".format(sim_id))
+        except Exception as ex:
+            sim_status = "error"
+            print("an error occurred: {0}".format(str(ex)))
+        finally:
+            self.gz_proxy.pause()
+            client.send(json.dumps({"type": "sim_end","sim_id": sim_id, "result":last_pos,"status":sim_status}))
+            client.close()
+            self.running_sim = False
+            self.sim_seq += 1    
+            print("simulation_run[{0}] terminated".format(sim_id))
  
     def run(self):
         # setup environment for this process
@@ -168,7 +179,7 @@ class GazeboWorker(multiprocessing.Process):
 
         while not self.shutdown:
             job = self.queue.get()
-            print("{0}|{1} <- {2}".format(self.ros_master_uri, self.gz_master_uri, job))
+            print("{0}|{1}|{2}".format(self.ros_master_uri, self.gz_master_uri, job["client_ws"]))
             if job == 'exit':
                 break
             self._run_simulation(job)

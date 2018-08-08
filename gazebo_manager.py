@@ -55,12 +55,13 @@ class WsGazeboManager(WebSocketHandler):
  
 if __name__ == '__main__':
 
-    gazebo_ports = (11345, 11346, 11347, 11348)
-    ros_ports = (11350, 11351, 11352, 11353)
+    gazebo_ports = range(11340, 11348)
+    ros_ports = range(11350, 11358)
+
     addr = "127.0.0.1"
 
     if len(sys.argv) > 1 and sys.argv[1] == "--debug":
-        gazebo_ports = (11345,)
+        gazebo_ports = (11340,)
         ros_ports = (11350,)
 
     gz_procs = []

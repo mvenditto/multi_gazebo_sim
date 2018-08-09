@@ -60,8 +60,8 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool(processes=proc_num)
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=24)
-    hof = tools.HallOfFame(3)
+    pop = toolbox.population(n=40)
+    hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)

@@ -4,6 +4,8 @@ import tornado.web
 import tornado.template
 import atexit
 import sys
+import os
+import subprocess
 from tornado.websocket import WebSocketHandler, WebSocketClosedError
 
 import json
@@ -65,6 +67,16 @@ if __name__ == '__main__':
         ros_ports = (11350,)
 
     gz_procs = []
+
+    """
+    if not os.path.isfile('source.lock'):
+        print('sourcing gazebo env. variables.')
+        subprocess.Popen('source /usr/share/gazebo-9/setup.sh', shell=True)
+        with open('source.lock', 'w+'):
+            pass 
+    else:
+        print('already sourced. (remove source.lock to force source again)')"""
+    
     
     for gz_worker in zip(gazebo_ports, ros_ports):
         gz_port, ros_port = gz_worker

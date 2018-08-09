@@ -10,6 +10,7 @@ ports_queue = m.Queue()
 for p in ports:
     ports_queue.put(p)
 
+SIM_MANAGER_URI = "ws://127.0.0.1:9090/simulation-manager"
 res = {}
 
 def fitness(sim_result):
@@ -19,36 +20,60 @@ def fitness(sim_result):
     except:
         return float('-inf')
 
+def send_job_and_wait(port, job):
+	
+	async def receive_sim_data(websocket, path):
+		try:
+			data = await websocket.recv()
+			res[port] = json.loads(data)
+		except Exception as ex:
+			print(ex)
+		finally:
+			asyncio.get_event_loop().stop()
+
+	loop = asyncio.get_event_loop()
+	job_server = websockets.serve(receive_sim_data, 'localhost', port)
+	loop.run_until_complete(start_server)
+	send_job(job, SIM_MANAGER_URI)
+	loop.run_forever()
+
+	# trigger and wait server shutdown
+	job_server.close()
+	job_server.wait_close()
+	
+	# release used port
+	ports_queue.put(port)
+    print("port[{0}] released!".format(port))
+
+    #compute fitness value
+    fitness_value = fitness(res[port])
+    print(f"{0}:fitness={1}".format(port, fitness_value))
+    del res[port]
+
 def listen_sim_data(port, job):
     print("listen_sim_data 1")
     async def receive(websocket, path):
         try:
-            
             data = await websocket.recv()
-            print("before data: {0}".format(data))
             res[port]=json.loads(data)
         except Exception as ex:
             print(ex)
         finally:
             websocket.close()
-            print("ws close {0}".format(port))
             asyncio.get_event_loop().stop()
 
-    print("binding to {0}".format(port))
     start_server = websockets.serve(receive, 'localhost', port)
 
     asyncio.get_event_loop().run_until_complete(start_server)
-    run_sim(job, "ws://127.0.0.1:9090/simulation-manager")
+    send_job(job, "ws://127.0.0.1:9090/simulation-manager")
     asyncio.get_event_loop().run_forever()
     fitness_value = fitness(res[port])
-    print(fitness_value, port)
     del res[port]
-    print("listen_sim_data 2")
     ports_queue.put(port)
     print("port[{0}] released!".format(port))
     return fitness_value
 
-def run_sim(job, sim_manager_uri):
+def send_job(job, sim_manager_uri):
     job_str = json.dumps(job)
     async def submit_job():
         async with websockets.connect(sim_manager_uri) as websocket:
@@ -65,6 +90,6 @@ def evaluate(indiv, ports_queue=None):
         "client_ws":"ws://localhost:{0}".format(port),
         "weights":weights
     }
-    listen_sim_data(port, job)
-
+    #listen_sim_data(port, job)
+    send_job_and_wait(port, job)
 

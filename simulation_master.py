@@ -16,39 +16,40 @@ res = {}
 def fitness(sim_result):
     try:
         x,y = sim_result["result"]
-        return x + y
+        return (x,)
     except:
-        return float('-inf')
+        return (float('-inf'),)
 
 def send_job_and_wait(port, job):
-	
-	async def receive_sim_data(websocket, path):
-		try:
-			data = await websocket.recv()
-			res[port] = json.loads(data)
-		except Exception as ex:
-			print(ex)
-		finally:
-			asyncio.get_event_loop().stop()
+    
+    async def receive_sim_data(websocket, path):
+        try:
+            data = await websocket.recv()
+            res[port] = json.loads(data)
+        except Exception as ex:
+            print(ex)
+        finally:
+            asyncio.get_event_loop().stop()
 
-	loop = asyncio.get_event_loop()
-	job_server = websockets.serve(receive_sim_data, 'localhost', port)
-	loop.run_until_complete(start_server)
-	send_job(job, SIM_MANAGER_URI)
-	loop.run_forever()
+    loop = asyncio.get_event_loop()
+    start_server = websockets.serve(receive_sim_data, 'localhost', port)
+    job_server = loop.run_until_complete(start_server)
+    send_job(job, SIM_MANAGER_URI)
+    loop.run_forever()
 
-	# trigger and wait server shutdown
-	job_server.close()
-	job_server.wait_close()
-	
-	# release used port
-	ports_queue.put(port)
+    # trigger and wait server shutdown
+    job_server.close()
+    job_server.wait_closed()
+    
+    # release used port
+    ports_queue.put(port)
     print("port[{0}] released!".format(port))
 
     #compute fitness value
     fitness_value = fitness(res[port])
-    print(f"{0}:fitness={1}".format(port, fitness_value))
+    print("{0}:fitness={1}".format(port, fitness_value))
     del res[port]
+    return fitness_value
 
 def listen_sim_data(port, job):
     print("listen_sim_data 1")
@@ -84,12 +85,10 @@ def send_job(job, sim_manager_uri):
 def evaluate(indiv, ports_queue=None):
     port = ports_queue.get()
     weights = indiv.tolist()
-    print(weights[0:10])
     job = {
         "duration":1,
         "client_ws":"ws://localhost:{0}".format(port),
         "weights":weights
     }
     #listen_sim_data(port, job)
-    send_job_and_wait(port, job)
-
+    return send_job_and_wait(port, job)

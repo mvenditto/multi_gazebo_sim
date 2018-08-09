@@ -29,7 +29,7 @@ from deap import tools
 from simulation_master import evaluate, ports_queue
 
 
-creator.create("FitnessMax", base.Fitness, weights=(0.0,))
+creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", array.array, typecode="f", fitness=creator.FitnessMax)
 
 toolbox = base.Toolbox()
@@ -60,8 +60,8 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool(processes=proc_num)
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=30)
-    hof = tools.HallOfFame(1)
+    pop = toolbox.population(n=24)
+    hof = tools.HallOfFame(3)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)

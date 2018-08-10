@@ -13,7 +13,7 @@ from gazebo_proxy import GazeboProxy
 from std_msgs.msg import Float32MultiArray
 
 from pybrain.structure.modules.relulayer import ReluLayer
-from pybrain.structure import SoftmaxLayer
+from pybrain.structure import SoftmaxLayer, TanhLayer
 from pybrain.tools.shortcuts import buildNetwork
 
 class GazeboWorker(multiprocessing.Process):
@@ -86,7 +86,7 @@ class GazeboWorker(multiprocessing.Process):
         self.gz_proxy = GazeboProxy("gz_server_%d" % self.gz_port)
 
     def _start_neural_net(self):
-        self.brain = buildNetwork(12, 12, 12, hiddenclass=ReluLayer, outclass=SoftmaxLayer)
+        self.brain = buildNetwork(12, 12, 12, hiddenclass=TanhLayer, outclass=SoftmaxLayer)
 
     def _feed_brain(self, joint_values):
         return self.brain.activate(joint_values.data)
@@ -98,6 +98,7 @@ class GazeboWorker(multiprocessing.Process):
     def move_model(self, joint_values):
         if self.running_sim:
             res = self._feed_brain(joint_values).tolist()
+            print("netout: " + str(res) + " " + str(self.ros_master_uri) )
             self._move_joint(res, self.joints_publisher)
 
     def _init_net(self, weights):
@@ -105,7 +106,6 @@ class GazeboWorker(multiprocessing.Process):
 
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
-        print(client)
         if self.audit_ws is None:
             self.audit_ws = ws.create_connection(self.audit_ws_uri)
 

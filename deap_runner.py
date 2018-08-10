@@ -18,10 +18,12 @@ import array
 import multiprocessing
 import random
 import sys
-
+import time
+import json 
 import numpy as np
+import os
 
-from deap import algorithms
+import algorithms
 from deap import base
 from deap import creator
 from deap import tools
@@ -41,14 +43,25 @@ toolbox.register("rand_float", random.random)
 toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.rand_float, 312)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
+crossover = tools.cxUniform
+mutation = tools.mutGaussian
+select = tools.selTournament
 
 toolbox.register("evaluate", evaluate, ports_queue=ports_queue)
-toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.2, indpb=0.2)
-toolbox.register("select", tools.selTournament, tournsize=3)
+toolbox.register("mate", crossover, indpb=0.1)
+toolbox.register("mutate", mutation, mu=0.0, sigma=0.2, indpb=0.2)
+toolbox.register("select", select, tournsize=3)
 
 if __name__ == "__main__":
-    random.seed(64)
+
+    seed = 64
+    pop_size = 40
+    hof_elem = 1
+    ngen = 30
+    cxpb=0.5
+    mutpb=0.2
+
+    random.seed(seed)
 
     proc_num = 8
     try:
@@ -60,15 +73,26 @@ if __name__ == "__main__":
     pool = multiprocessing.Pool(processes=proc_num)
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=40)
-    hof = tools.HallOfFame(1)
+    pop = toolbox.population(n=pop_size)
+    hof = tools.HallOfFame(hof_elem)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)
     stats.register("min", np.min)
     stats.register("max", np.max)
 
-    algorithms.eaSimple(pop, toolbox, cxpb=0.5, mutpb=0.2, ngen=40, 
+    simulation_name = time.time()
+    algorithms.eaSimple(simulation_name, pop, toolbox, cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
                         stats=stats, halloffame=hof)
+    duration = (time.time() - simulation_name) / 1000.0
+    try:
+        cp = dict(seed=seed, pop_size=pop_size, hof_elem=hof_elem, ngen=ngen, cxpb=cxpb, mutpb=mutpb, time=duration,
+            crossover=str(crossover), mutation=str(mutation), select=str(select))
+        json_elem = json.dumps(cp)
+        path = "/home/gazebo/Scrivania/output/{0}".format(simulation_name)
+        with open(os.path.join(path, "README"), "w") as cp_file:
+            cp_file.writelines(json_elem)
+    except Exception as ex:
+        print(ex)
 
     pool.close()

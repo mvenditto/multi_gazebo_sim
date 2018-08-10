@@ -47,31 +47,8 @@ def send_job_and_wait(port, job):
 
     #compute fitness value
     fitness_value = fitness(res[port])
-    print("{0}:fitness={1}".format(port, fitness_value))
+    #print("{0}:fitness={1}".format(port, fitness_value))
     del res[port]
-    return fitness_value
-
-def listen_sim_data(port, job):
-    print("listen_sim_data 1")
-    async def receive(websocket, path):
-        try:
-            data = await websocket.recv()
-            res[port]=json.loads(data)
-        except Exception as ex:
-            print(ex)
-        finally:
-            websocket.close()
-            asyncio.get_event_loop().stop()
-
-    start_server = websockets.serve(receive, 'localhost', port)
-
-    asyncio.get_event_loop().run_until_complete(start_server)
-    send_job(job, "ws://127.0.0.1:9090/simulation-manager")
-    asyncio.get_event_loop().run_forever()
-    fitness_value = fitness(res[port])
-    del res[port]
-    ports_queue.put(port)
-    print("port[{0}] released!".format(port))
     return fitness_value
 
 def send_job(job, sim_manager_uri):
@@ -86,9 +63,16 @@ def evaluate(indiv, ports_queue=None):
     port = ports_queue.get()
     weights = indiv.tolist()
     job = {
-        "duration":1,
+        "duration":10000,
         "client_ws":"ws://localhost:{0}".format(port),
         "weights":weights
     }
-    #listen_sim_data(port, job)
     return send_job_and_wait(port, job)
+
+if __name__ == '__main__':
+    import best_elem
+    from multiprocessing import Queue
+    import numpy as np
+    queue = Queue()
+    queue.put(11360)
+    evaluate(np.array(best_elem.weights), queue)

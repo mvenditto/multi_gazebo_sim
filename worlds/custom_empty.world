@@ -2,19 +2,29 @@
 
 	<world name = "default">
 
-		<physics type="ode">
+	   <physics type="ode">
+	      <gravity>0.000000 0.000000 -9.800000</gravity>
 	      <ode>
-	        <constraints>
-	          <cfm>0.000010</cfm>
-	          <erp>0.200000</erp>
-	          <contact_max_correcting_vel>100.000000</contact_max_correcting_vel>
-	          <contact_surface_layer>0.100000</contact_surface_layer>
-	        </constraints>
+		<solver>
+		  <type>world</type>
+		  <iters>50</iters>
+		  <precon_iters>0</precon_iters>
+		  <sor>1.300000</sor>
+		</solver>
+		<constraints>
+		  <!--<cfm>0.000000</cfm>-->
+		  <!--<erp>0.200000</erp>-->
+		  <!--<contact_max_correcting_vel>100.000000</contact_max_correcting_vel>-->
+		  <!--<contact_surface_layer>0.001000</contact_surface_layer>-->
+		</constraints>
 	      </ode>
-	    </physics>
+	      <!--<real_time_update_rate>0.000000</real_time_update_rate>-->
+	      <max_step_size>0.001000</max_step_size>
+	   </physics>
 		<include>
 			<uri>model://sun</uri>
 		</include>
+		
 		<include>
 			<uri>model://ground_plane</uri>
 		</include>
@@ -23,6 +33,7 @@
 		<model name="my_ground_plane">
 		  <static>true</static>
 		    <link name="link">
+              <pose>0 0 -0.0 0 -0 0</pose>
 		      <collision name="collision">
 		        <geometry>
 		          <plane>
@@ -33,9 +44,11 @@
 		        <surface>
 		          <friction>
 		            <ode>
+			      	  <kp>100000.0</kp>
+		              <kd>100000.0</kd>
 		              <mu>50.000000</mu>
 		              <mu2>50.000000</mu2>
-		              <fdir1>0.000000 0.000000 0.000000</fdir1>
+		              <fdir1>1.000000 0.000000 0.000000</fdir1>
 		              <slip1>0.000000</slip1>
 		              <slip2>0.000000</slip2>
 		            </ode>

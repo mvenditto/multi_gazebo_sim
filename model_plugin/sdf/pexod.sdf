@@ -1,5 +1,6 @@
 <sdf version='1.5'>
   <model name='pexod'>
+    <pose>0 0 0.1 0 -0 0</pose>
     <link name='base_link'>
       <pose>0 0 0 0 -0 0</pose>
       <inertial>
@@ -157,12 +158,12 @@
           </cylinder>
         </geometry>
         <surface>
-          <friction>
+          <!--<friction>
             <ode>
               <mu>500</mu>
               <mu2>250</mu2>
             </ode>
-          </friction>
+          </friction>-->
         </surface>
       </collision>
       <visual name='leg_0_3_visual'>
@@ -319,12 +320,12 @@
           </cylinder>
         </geometry>
         <surface>
-          <friction>
+          <!--<friction>
             <ode>
               <mu>500</mu>
               <mu2>250</mu2>
             </ode>
-          </friction>
+          </friction>-->
         </surface>
       </collision>
       <visual name='leg_2_3_visual'>
@@ -481,12 +482,12 @@
           </cylinder>
         </geometry>
         <surface>
-          <friction>
+          <!--<friction>
             <ode>
               <mu>500</mu>
               <mu2>250</mu2>
             </ode>
-          </friction>
+          </friction>-->
         </surface>
       </collision>
       <visual name='leg_3_3_visual'>
@@ -642,12 +643,12 @@
           </cylinder>
         </geometry>
         <surface>
-          <friction>
+          <!--<friction>
             <ode>
               <mu>500</mu>
               <mu2>250</mu2>
             </ode>
-          </friction>
+          </friction>-->
         </surface>
       </collision>
       <visual name='leg_5_3_visual'>

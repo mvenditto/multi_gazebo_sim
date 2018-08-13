@@ -86,7 +86,7 @@ class GazeboWorker(multiprocessing.Process):
         self.gz_proxy = GazeboProxy("gz_server_%d" % self.gz_port)
 
     def _start_neural_net(self):
-        self.brain = buildNetwork(12, 12, 12, hiddenclass=TanhLayer, outclass=SoftmaxLayer)
+        self.brain = buildNetwork(12, 12, 12, hiddenclass=TanhLayer, outclass=TanhLayer)
 
     def _feed_brain(self, joint_values):
         return self.brain.activate(joint_values.data)
@@ -97,8 +97,8 @@ class GazeboWorker(multiprocessing.Process):
 
     def move_model(self, joint_values):
         if self.running_sim:
-            res = self._feed_brain(joint_values).tolist()
-            print("netout: " + str(res) + " " + str(self.ros_master_uri) )
+            res = (self._feed_brain(joint_values) * 0.7).tolist()
+            #print("netout: " + str(res) + " " + str(self.ros_master_uri) )
             self._move_joint(res, self.joints_publisher)
 
     def _init_net(self, weights):
@@ -106,9 +106,10 @@ class GazeboWorker(multiprocessing.Process):
 
     def _run_simulation(self, sim_data):
         client = ws.create_connection(sim_data["client_ws"])
+        """
         if self.audit_ws is None:
             self.audit_ws = ws.create_connection(self.audit_ws_uri)
-
+        """
         sim_id = "{0}_{1}".format(self.gz_port, self.sim_seq)
         print("starting simulation_run[{0} -> {1}]".format(sim_id, sim_data["client_ws"]))
 
@@ -129,6 +130,7 @@ class GazeboWorker(multiprocessing.Process):
             while(sim_now - sim_start <= sim_duration):
                 model_state = self.gz_proxy.get_model_state('pexod', '')
                 model_pos = model_state.pose.position
+                """
                 dx = abs(model_pos.x) - abs(last_pos[0])
                 dy = abs(model_pos.y) - abs(last_pos[1])
 
@@ -142,7 +144,7 @@ class GazeboWorker(multiprocessing.Process):
                     }
                     self.audit_ws.send(json.dumps(msg))
                     first = False
-
+                """
                 last_pos = (model_pos.x, model_pos.y)
                 sim_now = self._get_sim_time()
             

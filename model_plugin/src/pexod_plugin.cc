@@ -203,7 +203,7 @@ namespace gazebo
 		array.data.clear();
 		
 		for (int i = 0; i < 12; i++) {
-			array.data.push_back((float)(this->joints[i]->Position()));
+			array.data.push_back((float)(this->joints[i]->GetVelocity(0)));
 		}
 		
 		pub.publish(array);

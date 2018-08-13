@@ -57,14 +57,20 @@ class WsGazeboManager(WebSocketHandler):
  
 if __name__ == '__main__':
 
-    gazebo_ports = range(11340, 11348)
-    ros_ports = range(11350, 11358)
-
     addr = "127.0.0.1"
+    proc_num = 1
 
-    if len(sys.argv) > 1 and sys.argv[1] == "--debug":
-        gazebo_ports = (11340,)
-        ros_ports = (11350,)
+    try:
+        proc_num_p = int(sys.argv[1])
+        if proc_num_p > 0:
+            proc_num = proc_num_p
+    except:
+        pass
+    finally:
+        gazebo_ports = range(11340, 11340 + proc_num)
+        ros_ports = range(11350, 11350 + proc_num)
+
+    print(gazebo_ports, ros_ports)
 
     gz_procs = []
 

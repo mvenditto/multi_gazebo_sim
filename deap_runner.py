@@ -45,19 +45,22 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 crossover = tools.cxUniform
 mutation = tools.mutGaussian
-select = tools.selTournament
+select = tools.selBest
 
 toolbox.register("evaluate", evaluate, ports_queue=ports_queue)
 toolbox.register("mate", crossover, indpb=0.1)
 toolbox.register("mutate", mutation, mu=0.0, sigma=0.2, indpb=0.2)
-toolbox.register("select", select, tournsize=3)
+toolbox.register("select", select)
 
 if __name__ == "__main__":
 
+    MU = 50
+    LAMBDA = 100 
+
     seed = 64
-    pop_size = 40
+    pop_size = MU
     hof_elem = 1
-    ngen = 30
+    ngen = 40
     cxpb=0.5
     mutpb=0.2
 
@@ -82,8 +85,13 @@ if __name__ == "__main__":
     stats.register("max", np.max)
 
     simulation_name = time.time()
-    algorithms.eaSimple(simulation_name, pop, toolbox, cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
-                        stats=stats, halloffame=hof)
+    
+    algorithms.eaMuPlusLambda(simulation_name, pop, toolbox, mu=MU, lambda_=LAMBDA, 
+                              cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
+                              stats=stats, halloffame=hof)
+
+    #algorithms.eaSimple(simulation_name, pop, toolbox, cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
+    #                    stats=stats, halloffame=hof)
     duration = (time.time() - simulation_name) / 1000.0
     try:
         cp = dict(seed=seed, pop_size=pop_size, hof_elem=hof_elem, ngen=ngen, cxpb=cxpb, mutpb=mutpb, time=duration,

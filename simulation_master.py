@@ -63,7 +63,7 @@ def evaluate(indiv, ports_queue=None):
     port = ports_queue.get()
     weights = indiv.tolist()
     job = {
-        "duration":10000,
+        "duration":10,
         "client_ws":"ws://localhost:{0}".format(port),
         "weights":weights
     }

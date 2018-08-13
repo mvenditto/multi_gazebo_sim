@@ -242,7 +242,7 @@ def varOr(population, toolbox, lambda_, cxpb, mutpb):
         "or equal to 1.0.")
 
     offspring = []
-    for _ in xrange(lambda_):
+    for _ in range(lambda_):
         op_choice = random.random()
         if op_choice < cxpb:            # Apply crossover
             ind1, ind2 = map(toolbox.clone, random.sample(population, 2))
@@ -260,7 +260,7 @@ def varOr(population, toolbox, lambda_, cxpb, mutpb):
     return offspring
 
 
-def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
+def eaMuPlusLambda(simulation_name, population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
                    stats=None, halloffame=None, verbose=__debug__):
     """This is the :math:`(\mu + \lambda)` evolutionary algorithm.
 
@@ -348,6 +348,8 @@ def eaMuPlusLambda(population, toolbox, mu, lambda_, cxpb, mutpb, ngen,
         logbook.record(gen=gen, nevals=len(invalid_ind), **record)
         if verbose:
             print(logbook.stream)
+
+        save(simulation_name, gen, population, halloffame, logbook)
 
     return population, logbook
 

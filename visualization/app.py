@@ -1,7 +1,8 @@
-from flask import Flask, url_for
+from flask import Flask, send_file
 import os
 import datetime
 from sim_load import *
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -32,6 +33,7 @@ def simulations_format():
 			   <td><a href="/sim/{0}">{0}</a></td>
 			   <td>{1}</td>
 			   <td>{2}</td>
+			   <td><button onclick="location.href='/sim/best_{0}'" class="btn btn-primary btn-sm"><i class="icon icon-download"></i></button></td>
 			</tr>
 			""".format(s, start, ngens)
 			content = content + row + "\n"
@@ -47,6 +49,12 @@ def get_gen_num(sim_name):
 def sim_plot(sim_id):
 	return plot_logbook(load_logbook(os.path.join(SIM_OUT_DIR, sim_id)))
 
+@app.route('/sim/best_<sim_id>')
+def sim_get_best(sim_id):
+	best =  get_best_indiv(os.path.join(SIM_OUT_DIR, sim_id))
+	return send_file(BytesIO(bytes(best, "utf-8")),
+		attachment_filename="best_{0}.py".format(sim_id.replace(".", "_")),
+		as_attachment=True)
 
 @app.route('/sim')
 def index():
@@ -55,6 +63,8 @@ def index():
 		<html>
 		<head>
 			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre.min.css">
+			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-exp.min.css">
+			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-icons.min.css">
 			<style>
 				body {
 					margin: 10px;
@@ -69,6 +79,7 @@ def index():
 		      <th>name</th>
 		      <th>start</th>
 		      <th>ngens</th>
+		      <th>best individual</th>
 		    </tr>
 		  </thead>
 		  <tbody>

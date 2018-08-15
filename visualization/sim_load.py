@@ -36,7 +36,7 @@ PLOT_TEMPLATE = """
 </html>
 """
 
-def load_logbook(sim_out_dir):
+def get_last_gen(sim_out_dir):
     max_gen = -1
     gens = os.listdir(sim_out_dir)
     for g in gens:
@@ -45,6 +45,22 @@ def load_logbook(sim_out_dir):
             max_gen = max(gi, max_gen)
         except:
             pass
+    return max_gen
+
+
+def get_best_indiv(sim_out_dir):
+    max_gen = get_last_gen(sim_out_dir)
+
+    with open(os.path.join(sim_out_dir, str(max_gen)), "rb") as gen_file:       
+        p = pickle.load(gen_file)
+        w = "weights = " + str(p["halloffame"].items[0]).replace("array('f', ", "").replace(")","") 
+        return w
+
+    return "error!"
+
+
+def load_logbook(sim_out_dir):
+    max_gen = get_last_gen(sim_out_dir)
 
     with open(os.path.join(sim_out_dir, str(max_gen)), "rb") as gen_file:       
         p = pickle.load(gen_file)

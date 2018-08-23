@@ -58,9 +58,7 @@ def simulations_format():
 				if status == "time" and last_update > 5:
 					status,scol = ("cross", "red")
 
-				values = list(map(lambda g: str(g['max']), load_logbook(path)))
-				x = ",".join(values[-min(80, int(ngens)): ])
-				max_ = round(float(values[-1]),4)
+				sparkline, max_ = sparkline_logbook(load_logbook(path), int(ngens))
 
 				row = """
 				<tr class="active" style="background-color:{9}">
@@ -69,12 +67,12 @@ def simulations_format():
 				   <td>{1}</td>
 				   <td>{7}</td>
 				   <td><i class="icon icon-{5}" style="color:{8};"></i>{6}</td>
-				   <td><span class="inlinesparkline">{10}</span></td>
+				   <td>{10}</td>
 				   <td>{11}</td>
 				   <td>{2}</td>
 				   <td style="text-align:center;"><button onclick="location.href='/sim/{3}/best_{0}'" class="btn btn-primary btn-sm"><i class="icon icon-download"></i></button></td>
 				</tr>
-				""".format(name, start, ngens, loc, col, status, end, readable_date(last_gen_t), scol, rowc, x, max_)
+				""".format(name, start, ngens, loc, col, status, end, readable_date(last_gen_t), scol, rowc, sparkline, max_)
 				content = content + row + "\n"
 			except Exception as ex:
 				print(ex)

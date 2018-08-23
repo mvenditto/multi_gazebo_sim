@@ -9,6 +9,12 @@ from deap import creator
 import pygal
 import shutil
 
+from pygal.style import CleanStyle
+
+sparkline_style = CleanStyle()
+sparkline_style.background = '#ffffff'
+sparkline_style.plot_background = '#ffffff'
+
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", array.array, typecode="f", fitness=creator.FitnessMax)
 
@@ -26,6 +32,7 @@ PLOT_TEMPLATE = """
     svg {
         max-height: 100%;
         margin-left: 15%;
+        border: 1.5px solid lightsteelblue;
     }
   </style>
   <script type="text/javascript" src="http://kozea.github.com/pygal.js/latest/pygal-tooltips.min.js"></script>
@@ -74,6 +81,17 @@ MIN_VAL = -100.0
 def map_neg_infinity(values):
     return map(lambda x: x if x != float("-inf") else MIN_VAL, values)
 
+def sparkline_logbook(logbook, ngens, last_n_gen=80):
+	values = list(map(lambda g: str(g['max']), logbook))#[-min(80, int(ngens)):]
+	max_ = round(float(values[-1]),4)
+
+	chart = pygal.Line(style=sparkline_style)
+	chart.add('', list(map(lambda x: int(float(x)), values)))
+	chart.render_sparkline()
+	sparkline = chart.render_sparkline().decode("utf-8")
+
+	return sparkline, max_
+
 
 def plot_logbook(logbook):
     y1 = list(map(lambda g: g['max'], logbook))
@@ -82,7 +100,7 @@ def plot_logbook(logbook):
     y4 = list(map(lambda g: g['std'], logbook))
     x = list(map(lambda g: g['gen'], logbook))
 
-    line_chart = pygal.XY(show_dots=False)
+    line_chart = pygal.XY(show_dots=False, xrange=(0, int(x[-1])))
     line_chart.title = 'Simulation Plot'
     
 
@@ -92,44 +110,3 @@ def plot_logbook(logbook):
     line_chart.add('std', zip(x, map_neg_infinity(y4)))
     
     return PLOT_TEMPLATE.replace("{plot}", line_chart.render().decode("utf-8"))
-
-def term_plot_logbook(x, y):
-    tw,th = shutil.get_terminal_size()
-    print(tw,th)
-    x = x[0: tw - 2]
-    y = y[0: th - 2]
-
-    y = list(map(lambda yi: int(round(yi)),y))
-    rows = []
-    max_y = max(y)
-    histos = list(map(lambda j: ''.join(reversed((u'\u2588' * j) + (' ' * (max_y - j)))), y))
-
-    x_labels = list(map(str, x))
-    max_x_label_len = max(map(len, x_labels))
-
-    y_labels = list(map(str, y))
-    max_y_label_len = max(map(len, y_labels))
-
-    plot = ''
-    for i in range(0, max_y):
-        d = map(lambda h: h[i], histos)
-        plot += '\n'
-        y_l = str(max_y - i)
-        plot += y_l + (' ' * (max_y_label_len - len(y_l)))
-        plot += ''.join(d)
-        
-    plot += '\n'
-
-    for i in range(0, max_x_label_len):
-        labels_ = map(lambda l: l[i] if len(l) > i else ' ', x_labels)
-        plot += (' ' * max_y_label_len) + ''.join(labels_)
-        plot += '\n'
-
-    print(plot)
-
-if __name__ == '__main__':
-    outdir = "/home/mvend/Scrivania/simulations/output/1534262608.3884723/"
-    logbook = load_logbook(outdir)
-    x = list(map(lambda g: g['gen'], logbook))
-    y = list(map(lambda g: g['max'], logbook))
-    histos = term_plot_logbook(x,y)

@@ -41,6 +41,7 @@ PLOT_TEMPLATE = """
   </style>
   </head>
   <body>
+  	<h2>{title}</h2>
     {plot}
   </body>
 </html>

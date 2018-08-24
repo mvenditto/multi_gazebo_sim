@@ -88,7 +88,9 @@ def get_gen_num(sim_path):
 
 @app.route('/sim/<loc>/<sim_id>')
 def sim_plot(loc, sim_id):
-	return plot_logbook(load_logbook(os.path.join(OUT_DIR_MAP[loc], sim_id)))
+	plot_page = plot_logbook(load_logbook(os.path.join(OUT_DIR_MAP[loc], sim_id)))
+	plot_page = plot_page.replace("{title}", f"{loc} > {sim_id}")
+	return plot_page
 
 @app.route('/sim/<loc>/best_<sim_id>')
 def sim_get_best(loc, sim_id):

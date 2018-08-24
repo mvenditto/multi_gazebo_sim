@@ -128,7 +128,7 @@ def index():
 		      <th>start</th>
 		      <th>last update</th>
 		      <th>status</th>
-		      <th>summary (last 80 gen.)</th>
+		      <th>summary</th>
 		      <th>max</th>
 		      <th>ngens</th>
 		      <th>best individual</th>

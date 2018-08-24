@@ -6,14 +6,17 @@ import os
 from deap import base
 from deap import creator
 
-import pygal
 import shutil
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import base64
+from io import BytesIO
 
-from pygal.style import CleanStyle
 
-sparkline_style = CleanStyle()
-sparkline_style.background = '#ffffff'
-sparkline_style.plot_background = '#ffffff'
+from plotly.offline import plot
+from plotly.graph_objs import Scatter
+
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", array.array, typecode="f", fitness=creator.FitnessMax)
@@ -29,14 +32,13 @@ PLOT_TEMPLATE = """
         height: 95%;
         margin: 10px;
     }
+    /*
     svg {
         max-height: 100%;
         margin-left: 15%;
         border: 1.5px solid lightsteelblue;
-    }
+    }*/
   </style>
-  <script type="text/javascript" src="http://kozea.github.com/pygal.js/latest/pygal-tooltips.min.js"></script>
-    <!-- ... -->
   </head>
   <body>
     {plot}
@@ -53,6 +55,7 @@ def get_last_gen(sim_out_dir):
             max_gen = max(gi, max_gen)
         except:
             pass
+    print(sim_out_dir, max_gen)
     return max_gen
 
 
@@ -81,32 +84,66 @@ MIN_VAL = -100.0
 def map_neg_infinity(values):
     return map(lambda x: x if x != float("-inf") else MIN_VAL, values)
 
-def sparkline_logbook(logbook, ngens, last_n_gen=80):
-	values = list(map(lambda g: str(g['max']), logbook))#[-min(80, int(ngens)):]
-	max_ = round(float(values[-1]),4)
+def sparkline_logbook(logbook, ngens, figsize=(4, 0.3)):
+    y_values = list(map(lambda g: str(g['max']), logbook))
+    x_values = list(range(0, ngens))
+    max_ = round(float(y_values[-1]),4)
 
-	chart = pygal.Line(style=sparkline_style)
-	chart.add('', list(map(lambda x: int(float(x)), values)))
-	chart.render_sparkline()
-	sparkline = chart.render_sparkline().decode("utf-8")
+    data = list(y_values)
 
-	return sparkline, max_
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    ax.plot(data)
+    for k,v in ax.spines.items():
+        v.set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])
 
+    plt.plot(len(data) - 1, data[len(data) - 1], 'r')
+
+    ax.fill_between(range(len(data)), data, len(data)*[min(data)], alpha=0.1)
+
+    img = BytesIO()
+    plt.savefig(img, transparent=True, bbox_inches='tight')
+    img.seek(0)
+    plt.close()
+
+    chart = base64.b64encode(img.read()).decode("UTF-8")
+    return '<div><img src="data:image/png;base64,{}"/></div>'.format(chart), max_
 
 def plot_logbook(logbook):
+
     y1 = list(map(lambda g: g['max'], logbook))
     y2 = list(map(lambda g: g['avg'], logbook))
     y3 = list(map(lambda g: g['min'], logbook))
     y4 = list(map(lambda g: g['std'], logbook))
     x = list(map(lambda g: g['gen'], logbook))
 
-    line_chart = pygal.XY(show_dots=False, xrange=(0, int(x[-1])))
-    line_chart.title = 'Simulation Plot'
-    
+    trace_max = Scatter(
+        x = x,
+        y = y1,
+        mode = 'lines',
+        name = 'max'
+    )
+    trace_avg = Scatter(
+        x = x,
+        y = y2,
+        mode = 'lines',
+        name = 'avg'
+    )
+    trace_min = Scatter(
+        x = x,
+        y = y3,
+        mode = 'lines',
+        name = 'min'
+    )
+    trace_std = Scatter(
+        x = x,
+        y = y4,
+        mode = 'lines',
+        name = 'std'
+    )
 
-    line_chart.add('max', list(zip(x, map_neg_infinity(y1))))
-    line_chart.add('avg', zip(x, map_neg_infinity(y2)))
-    line_chart.add('min', zip(x, map_neg_infinity(y3)))
-    line_chart.add('std', zip(x, map_neg_infinity(y4)))
+    chart = plot([trace_max, trace_avg, trace_min, trace_std], output_type='div')
+    chart = '<div style="height:100%;">' + chart[5:]
     
-    return PLOT_TEMPLATE.replace("{plot}", line_chart.render().decode("utf-8"))
+    return PLOT_TEMPLATE.replace("{plot}", chart)

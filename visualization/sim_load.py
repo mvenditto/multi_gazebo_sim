@@ -111,6 +111,27 @@ def sparkline_logbook(logbook, ngens, figsize=(4, 0.3)):
     chart = base64.b64encode(img.read()).decode("UTF-8")
     return '<div><img src="data:image/png;base64,{}"/></div>'.format(chart), max_
 
+
+def get_logbook_trace(id_, logbook):
+
+    y1 = list(map(lambda g: g['max'], logbook))
+    x = list(map(lambda g: g['gen'], logbook))
+
+    return Scatter(
+        x = x,
+        y = y1,
+        mode = 'lines',
+        name = str(id_)
+    )
+
+def plot_multi_logbook(traces):
+
+    chart = plot(traces, output_type='div')
+    chart = '<div style="height:100%;">' + chart[5:]
+    
+    return PLOT_TEMPLATE.replace("{plot}", chart)
+   
+
 def plot_logbook(logbook):
 
     y1 = list(map(lambda g: g['max'], logbook))

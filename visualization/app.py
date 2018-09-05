@@ -35,6 +35,24 @@ def date_diff(d2, d1):
 def list_simulations():
 	return [(p, os.listdir(p[1])) for p in SIM_OUT_DIRS]
 
+def summary_plot():
+	sims_ = []
+	traces = []
+	sims = list_simulations()
+	for sim_dir in sims:
+		for sim in sim_dir[1]:
+			sims_.append(os.path.join(sim_dir[0][1], sim))
+
+	for out_path in sims_:
+		print(out_path)
+		logbook = load_logbook(out_path)
+		logbook_trace = get_logbook_trace(out_path.split('/')[-1], logbook)
+		traces.append(logbook_trace)
+
+	plot_page = plot_multi_logbook(traces)
+	plot_page = plot_page.replace("{title}", "summary")
+	return plot_page
+
 def simulations_format():
 	sims = list_simulations()
 	content = ""
@@ -91,6 +109,10 @@ def sim_plot(loc, sim_id):
 	plot_page = plot_logbook(load_logbook(os.path.join(OUT_DIR_MAP[loc], sim_id)))
 	plot_page = plot_page.replace("{title}", f"{loc} > {sim_id}")
 	return plot_page
+
+@app.route('/sim/summary')
+def sim_splot():
+	return summary_plot()
 
 @app.route('/sim/<loc>/best_<sim_id>')
 def sim_get_best(loc, sim_id):

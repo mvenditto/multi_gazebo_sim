@@ -1,10 +1,13 @@
-from flask import Flask, send_file
+from flask import Flask, send_file, url_for
 import os
 import datetime
 import itertools
 import time
 from sim_load import *
+from templates import *
 from io import BytesIO
+import json
+import re
 
 app = Flask(__name__)
 app.config["CACHE_TYPE"] = "null"
@@ -35,6 +38,10 @@ def date_diff(d2, d1):
 def list_simulations():
 	return [(p, os.listdir(p[1])) for p in SIM_OUT_DIRS]
 
+def render_math(x, color="#626262"):
+	return f"`color({color})({x})`"
+	
+
 def summary_plot():
 	sims_ = []
 	traces = []
@@ -52,6 +59,77 @@ def summary_plot():
 	plot_page = plot_multi_logbook(traces)
 	plot_page = plot_page.replace("{title}", "summary")
 	return plot_page
+
+def simulations_info():
+	sims = list_simulations()
+	content = ""
+	idx = 0
+	for sim in sims:
+		for s in sim[1]:
+			name = s
+			path = os.path.join(sim[0][1], name)
+			readme = os.path.join(path, 'README')
+			net = os.path.join(path, 'net')
+			loc,_ = sim[0][0].split('|')
+			deap_base = "https://deap.readthedocs.io/en/master/api/tools.html#deap.tools."
+			sqrt_ = r"sqrt\((.*)\)"
+			 
+			if not os.path.exists(readme) or not os.path.exists(net):
+				continue
+			
+			try:
+				with open(readme, "r") as readme_:
+					readme = json.loads(readme_.read()) 
+				with open(net, "r") as net_:
+					net = json.loads(net_.read()) 
+
+				rowc = "#e3e3e3" if idx % 2 == 0 else "#f0f1f4"
+
+				row = """
+				<tr class="active" style="background-color:{0}">
+					<td><a href="/sim/{14}/{1}">{1}</a></td>
+					<td>{2}</td>
+					<td>{3}</td>
+					<td>{4}</td>
+					<td>{5}</td>
+					<td>{6}</td>
+					<td><a href="{15}{7}">{7}</a></td>
+					<td><a href="{15}{8}">{8}</a></td>
+					<td><a href="{15}{9}">{9}</a></td>
+					<td>{10}</td>
+					<td>{11}</td>
+					<td>{12}</td>
+					<td>{13}</td>
+				</tr>
+				""".format(
+					    rowc, 
+						s, # name 
+						readme["pop_size"],
+						readme["seed"],
+						readme["ngen"],
+						readme["cxpb"],
+						readme["mutpb"],
+						readme["crossover"].split()[1],
+						readme["mutation"].split()[1],
+						readme["select"].split()[1],
+						net["fitness"] if "fitness" in net else "x",
+						render_math(net["topology"]),
+						render_math(net["input_norm"]["range"]) if "range" in net["input_norm"] else render_math("false"),
+						render_math(net["weights_init"]),
+						loc,
+						deap_base
+					)
+
+				content = content + row + "\n"
+
+			except Exception as e:
+				print(e)
+				continue
+
+			idx += 1
+
+	return content
+
 
 def simulations_format():
 	sims = list_simulations()
@@ -122,47 +200,12 @@ def sim_get_best(loc, sim_id):
 		attachment_filename="best_{0}_{1}.py".format(sim_id.replace(".", "_"), gen),
 		as_attachment=True)
 
+@app.route('/sim/info')
+def info():
+	math_jax = url_for('static', filename='ASCIIMathML.js')
+	ascii_math = url_for('static', filename='ASCIIMathML.js')
+	return INFO_TEMPLATE.replace("{simulations}", simulations_info()).replace("{ascii_math_src}", ascii_math)
+
 @app.route('/sim')
 def index():
-	content = """
-		<!doctype html>
-		<html>
-		<head>
-			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre.min.css">
-			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-exp.min.css">
-			<link rel="stylesheet" href="https://unpkg.com/spectre.css/dist/spectre-icons.min.css">
-			<script src="https://code.jquery.com/jquery-1.10.0.min.js"></script>
-			<script src="https://omnipotent.net/jquery.sparkline/2.1.2/jquery.sparkline.min.js"></script>
-			<script type="text/javascript">
-			    $(function() { $('.inlinesparkline').sparkline(); });
-			</script>
-			<style>
-				body {
-					margin: 10px;
-				}
-			</style>
-		</head>
-		<body>
-		<h1>Simulations</h1>
-		<table class="table table-striped table-hover">
-		  <thead>
-		    <tr>
-		      <th>location</th>
-		      <th>name</th>
-		      <th>start</th>
-		      <th>last update</th>
-		      <th>status</th>
-		      <th>summary</th>
-		      <th>max</th>
-		      <th>ngens</th>
-		      <th>best individual</th>
-		    </tr>
-		  </thead>
-		  <tbody>
-		    {simulations}
-		  </tbody>
-		</table>
-		</body>
-		</html>
-	"""
-	return content.replace("{simulations}", simulations_format())
+	return DEF_TEMPLATE.replace("{simulations}", simulations_format())

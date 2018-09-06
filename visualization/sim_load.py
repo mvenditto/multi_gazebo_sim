@@ -17,6 +17,7 @@ from io import BytesIO
 from plotly.offline import plot
 from plotly.graph_objs import Scatter, Scatter3d
 
+colors = "#DA2808, #9E9D22, #D9B41E, #EBBF1D, #FBCD1D, #4DDA8B, #360097, #EA41F2, #F7BCE9, #EA9411, #E95EBD, #E1EBE9, #EC8400, #EF3D1A, #ECFF70, #71CF70, #E3D50B, #F7A227".split(", ")
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", array.array, typecode="f", fitness=creator.FitnessMax)
@@ -171,10 +172,11 @@ def plot_logbook(logbook):
     return PLOT_TEMPLATE.replace("{plot}", chart)
 
 
-def plot_3d_trace(traces):
+def plot_3d_traces(traces):
     import json
 
     data = []
+    idx = 0
 
     for trace_ in traces:
         
@@ -197,7 +199,7 @@ def plot_3d_trace(traces):
             x=x, y=y, z=z,
             mode = "lines",
             line=dict(
-                #color='#1f77b4',
+                color= colors[idx],
                 width=4
             )
         )
@@ -214,6 +216,7 @@ def plot_3d_trace(traces):
 
         data.append(t)
         data.append(end)
+        idx = idx + 1
 
     o = Scatter3d(
         name="start_point(origin)",
@@ -241,19 +244,19 @@ def plot_3d_trace(traces):
             xaxis=dict(
                 range=[-5,5],
                 showbackground=True,
-                backgroundcolor='rgb(85, 65, 65, .65)'
+                backgroundcolor='rgb(65, 65, 65, .65)'
             ),
             yaxis=dict(
                 range=[-5,5],
                 showbackground=True,
-                backgroundcolor='rgb(65, 85, 65, .65)'
+                backgroundcolor='rgb(65, 65, 65, .65)'
             ),
             zaxis=dict(
                 #range=[0,0.5],
                 gridcolor='rgb(255, 255, 255)',
                 zerolinecolor='rgb(255, 0, 0)',
                 showbackground=True,
-                backgroundcolor='rgb(55, 55, 55)'
+                backgroundcolor='rgb(85, 85, 85)'
             ),
             camera = dict(
                 up=dict(x=0, y=0, z=1),

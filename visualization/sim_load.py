@@ -15,7 +15,7 @@ from io import BytesIO
 
 
 from plotly.offline import plot
-from plotly.graph_objs import Scatter
+from plotly.graph_objs import Scatter, Scatter3d
 
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
@@ -169,3 +169,104 @@ def plot_logbook(logbook):
     chart = '<div style="height:100%;">' + chart[5:]
     
     return PLOT_TEMPLATE.replace("{plot}", chart)
+
+
+def plot_3d_trace(traces):
+    import json
+
+    data = []
+
+    for trace_ in traces:
+        
+        if isinstance(trace_, str):
+            with open(trace_, "r") as trace_json:
+                trace = json.loads(trace_json.read())
+        else:
+            trace = trace_
+
+
+        name = trace["name"]
+        trace = trace["trace"]
+
+        x = list(map(lambda p: p[0], trace))
+        y = list(map(lambda p: p[1], trace))
+        z = list(map(lambda p: p[2], trace))
+
+        t = Scatter3d(
+            name=name,
+            x=x, y=y, z=z,
+            mode = "lines",
+            line=dict(
+                #color='#1f77b4',
+                width=4
+            )
+        )
+
+        end = Scatter3d(
+            name="reached_p_" + name,
+            x=[x[-1]], y=[y[-1]], z=[z[-1]],
+            mode = "markers",
+            marker=dict(
+                color="green",
+                size=4
+            )
+        )
+
+        data.append(t)
+        data.append(end)
+
+    o = Scatter3d(
+        name="start_point(origin)",
+        x=[0], y=[0], z=[0],
+        mode = "markers",
+        marker=dict(
+            color="red",
+            size=4
+        )
+    )
+
+    data.append(o)
+    
+    layout = dict(
+        autosize=True,
+        title='Simulations Trace',
+        margin=dict(
+            l=1,
+            r=1,
+            b=1,
+            t=50,
+        ),
+        plot_bgcolor='#000',
+        scene=dict(
+            xaxis=dict(
+                range=[-5,5],
+                showbackground=True,
+                backgroundcolor='rgb(85, 65, 65, .65)'
+            ),
+            yaxis=dict(
+                range=[-5,5],
+                showbackground=True,
+                backgroundcolor='rgb(65, 85, 65, .65)'
+            ),
+            zaxis=dict(
+                #range=[0,0.5],
+                gridcolor='rgb(255, 255, 255)',
+                zerolinecolor='rgb(255, 0, 0)',
+                showbackground=True,
+                backgroundcolor='rgb(55, 55, 55)'
+            ),
+            camera = dict(
+                up=dict(x=0, y=0, z=1),
+                center=dict(x=0, y=0, z=0),
+                eye=dict(x=0.0, y=1.2, z=0.1)
+            ),
+            aspectratio = dict( x=2.0, y=1.5, z=0.5),
+            aspectmode = 'manual'
+        ),
+    )
+
+    fig = dict(data=data, layout=layout)
+
+    chart = plot(fig, output_type='div')
+    chart = '<div style="height:100%;">' + chart[5:]
+    return chart

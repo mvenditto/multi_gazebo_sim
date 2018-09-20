@@ -47,6 +47,8 @@ namespace gazebo
 
         // Store the model pointer for convenience.
         this->model = _model;
+        // Body
+        this->chassis = model->GetLink("base_link");
         // Leg 1
         this->joint_body_leg_0 = _model->GetJoint("body_leg_0");
         this->joint_leg_0_1_2 = _model->GetJoint("leg_0_1_2");
@@ -202,6 +204,14 @@ namespace gazebo
         std_msgs::Float32MultiArray array;
 		array.data.clear();
 		
+        float bodyYaw = (float) this->model->WorldPose().Rot().Yaw();
+        float bodyPitch = (float) this->model->WorldPose().Rot().Pitch();
+        float bodyRoll = (float) this->model->WorldPose().Rot().Roll();
+        
+        array.data.push_back(bodyYaw);
+        array.data.push_back(bodyPitch);
+        array.data.push_back(bodyRoll);
+        
 		for (int i = 0; i < 12; i++) {
 			array.data.push_back((float)(this->joints[i]->GetVelocity(0)));
 		}
@@ -236,6 +246,7 @@ namespace gazebo
     
     /// \brief Pointer to the joint.
     // Leg 1
+    private: physics::LinkPtr chassis;
     private: physics::JointPtr joint_body_leg_0;
     private: physics::JointPtr joint_leg_0_1_2;
     private: physics::JointPtr joint_leg_0_2_3;

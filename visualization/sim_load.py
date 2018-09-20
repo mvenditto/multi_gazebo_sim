@@ -42,7 +42,7 @@ PLOT_TEMPLATE = """
   </style>
   </head>
   <body>
-  	<h2>{title}</h2>
+    <h2>{title}</h2>
     {plot}
   </body>
 </html>
@@ -71,6 +71,27 @@ def get_best_indiv(sim_out_dir):
 
     return "error!"
 
+
+def get_best_indiv_history(sim_out_dir):
+    from collections import OrderedDict
+    import json
+
+    logbook = load_logbook(sim_out_dir)
+    m = dict(set(map(lambda l: (l['max'], l['gen']), logbook)))
+    m = OrderedDict(sorted(m.items()))
+
+    best_history = []
+
+    for f, g in m.items():
+        if g == 0: continue
+        with open(os.path.join(sim_out_dir, str(g)), "rb") as gen_file:       
+            p = pickle.load(gen_file)
+            w = str(p["halloffame"].items[0]).replace("array('f', ", "").replace(")","").split(",")
+            b = {'weights': w, 'gen': g, 'fitness': f}
+            best_history.append(b)
+      
+    with open("/home/mvend/best_history.json", "w") as bs:
+        bs.write(json.dumps(best_history))
 
 def load_logbook(sim_out_dir):
     max_gen = get_last_gen(sim_out_dir)
@@ -172,11 +193,10 @@ def plot_logbook(logbook):
     return PLOT_TEMPLATE.replace("{plot}", chart)
 
 
-def plot_3d_traces(traces):
+def prepare_traces(traces):
     import json
 
-    data = []
-    idx = 0
+    traces_list = []
 
     for trace_ in traces:
         
@@ -186,6 +206,51 @@ def plot_3d_traces(traces):
         else:
             trace = trace_
 
+        traces_list.append(trace)
+
+    traces_list = sorted(traces_list, key=lambda a: int(a["name"].split('_')[1])) 
+
+    return traces_list
+
+def plot_2d_traces_X_Y(traces):
+    data = []
+    idx = 0
+
+    traces_list = prepare_traces(traces)
+
+    for trace in traces_list:
+            name = trace["name"]
+            trace = trace["trace"]
+
+            t = Scatter(
+                x = list(map(lambda p: p[0], trace)),
+                y = list(map(lambda p: p[1], trace)),
+                mode = 'lines',
+                name = name
+            )
+
+            data.append(t)
+            idx = idx + 1
+
+
+    layout = dict(legend=dict(orientation="h"))
+
+    figure=dict(data=data, layout=layout)
+
+    chart = plot(figure, output_type='div')
+    chart = '<div style="height:100%;">' + chart[5:]
+    
+    return PLOT_TEMPLATE.replace("{plot}", chart).replace("{title}", "traces-2d")
+
+
+def plot_3d_traces(traces):
+
+    data = []
+    idx = 0
+    
+    traces_list = prepare_traces(traces)
+
+    for trace in traces_list:
 
         name = trace["name"]
         trace = trace["trace"]
@@ -199,7 +264,7 @@ def plot_3d_traces(traces):
             x=x, y=y, z=z,
             mode = "lines",
             line=dict(
-                color= colors[idx],
+                color= colors[idx % len(colors)],
                 width=4
             )
         )

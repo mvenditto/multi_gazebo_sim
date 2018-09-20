@@ -1,0 +1,14 @@
+# packages
+ros-melodic
+
+# python3
+numpy
+deap
+asyncio
+websockets
+
+# python2
+numpy
+pybrain
+tornado
+websocket-client

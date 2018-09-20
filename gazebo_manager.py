@@ -8,6 +8,7 @@ import os
 import subprocess
 from tornado.websocket import WebSocketHandler, WebSocketClosedError
 
+
 import json
 
 import multiprocessing
@@ -55,7 +56,7 @@ class WsGazeboManager(WebSocketHandler):
     def on_close(self):
         print("closed")
  
-if __name__ == '__main__':
+def main():
 
     addr = "127.0.0.1"
     proc_num = 1
@@ -67,23 +68,13 @@ if __name__ == '__main__':
     except:
         pass
     finally:
-        gazebo_ports = range(11340, 11340 + proc_num)
-        ros_ports = range(11350, 11350 + proc_num)
+        gazebo_ports = range(11000, 11000 + proc_num)
+        ros_ports = range(12000, 12000 + proc_num)
 
     print(gazebo_ports, ros_ports)
 
     gz_procs = []
 
-    """
-    if not os.path.isfile('source.lock'):
-        print('sourcing gazebo env. variables.')
-        subprocess.Popen('source /usr/share/gazebo-9/setup.sh', shell=True)
-        with open('source.lock', 'w+'):
-            pass 
-    else:
-        print('already sourced. (remove source.lock to force source again)')"""
-    
-    
     for gz_worker in zip(gazebo_ports, ros_ports):
         gz_port, ros_port = gz_worker
         gzw = GazeboWorker(job_queue, quiet=True, gz_master=(addr, gz_port), ros_master=(addr, ros_port))
@@ -113,3 +104,6 @@ if __name__ == '__main__':
  
     application.listen(9090)
     tornado.ioloop.IOLoop.instance().start()
+
+if __name__ == '__main__':
+    main()

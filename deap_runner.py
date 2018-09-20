@@ -14,6 +14,7 @@
 #    You should have received a copy of the GNU Lesser General Public
 #    License along with DEAP. If not, see <http://www.gnu.org/licenses/>.
 
+import pickle
 import array
 import multiprocessing
 import random
@@ -40,7 +41,7 @@ toolbox = base.Toolbox()
 toolbox.register("rand_float", random.random)
 
 # Structure initializers
-toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.rand_float, 312)
+toolbox.register("individual", tools.initRepeat, creator.Individual, toolbox.rand_float, 192)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 crossover = tools.cxUniform
@@ -48,36 +49,48 @@ mutation = tools.mutGaussian
 select = tools.selBest
 
 toolbox.register("evaluate", evaluate, ports_queue=ports_queue)
-toolbox.register("mate", crossover, indpb=0.1)
-toolbox.register("mutate", mutation, mu=0.0, sigma=0.2, indpb=0.2)
+toolbox.register("mate", crossover, indpb=0.6) #0.6
+toolbox.register("mutate", mutation, mu=0.0, sigma=0.3, indpb=0.3)#0.0 0.2 0.3
 toolbox.register("select", select)
 
-if __name__ == "__main__":
+def main():
 
-    MU = 50
-    LAMBDA = 100 
+    MU = 100
+    LAMBDA = 200 
 
     seed = 64
     pop_size = MU
     hof_elem = 1
-    ngen = 40
-    cxpb=0.5
-    mutpb=0.2
+    ngen = 300
+    cxpb=0.6
+    mutpb=0.4
 
     random.seed(seed)
 
-    proc_num = 8
+    proc_num = 16
     try:
         proc_num = int(sys.argv[1])
     except:
         pass
     
+    try:
+    	gen_res = sys.argv[2]
+    	with open(gen_res, "rb") as snap_file:
+    		snap = pickle.load(snap_file)
+    		pop = snap["population"]
+    		hof = snap["halloffame"]
+    		random.setstate(snap["rndstate"])
+    		print("loaded checkpoint {0}".format(gen_res))
+    except Exception as ex:
+    	print(ex)
+    	pop = toolbox.population(n=pop_size)
+    	hof = tools.HallOfFame(hof_elem)
+    	print("generating new population...")
+
     # Process Pool of 4 workers
     pool = multiprocessing.Pool(processes=proc_num)
     toolbox.register("map", pool.map)
     
-    pop = toolbox.population(n=pop_size)
-    hof = tools.HallOfFame(hof_elem)
     stats = tools.Statistics(lambda ind: ind.fitness.values)
     stats.register("avg", np.mean)
     stats.register("std", np.std)
@@ -90,17 +103,18 @@ if __name__ == "__main__":
                               cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
                               stats=stats, halloffame=hof)
 
-    #algorithms.eaSimple(simulation_name, pop, toolbox, cxpb=cxpb, mutpb=mutpb, ngen=ngen, 
-    #                    stats=stats, halloffame=hof)
     duration = (time.time() - simulation_name) / 1000.0
     try:
         cp = dict(seed=seed, pop_size=pop_size, hof_elem=hof_elem, ngen=ngen, cxpb=cxpb, mutpb=mutpb, time=duration,
             crossover=str(crossover), mutation=str(mutation), select=str(select))
         json_elem = json.dumps(cp)
-        path = "/home/gazebo/Scrivania/output/{0}".format(simulation_name)
+        path = "./output/{0}".format(simulation_name)
         with open(os.path.join(path, "README"), "w") as cp_file:
             cp_file.writelines(json_elem)
     except Exception as ex:
         print(ex)
 
     pool.close()
+
+if __name__ == '__main__':
+    main()

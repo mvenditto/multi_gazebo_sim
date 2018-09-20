@@ -35,7 +35,7 @@ import pickle
 def save(file_name, gen_num, population, hof, logbook):
     cp = dict(population=population, halloffame=hof,
                       logbook=logbook, rndstate=random.getstate())
-    path = "/home/gazebo/Scrivania/output/{0}".format(file_name)
+    path = "./output/{0}".format(file_name)
     if not os.path.exists(path):
         os.makedirs(path)
     with open(os.path.join(path, str(gen_num)), "wb") as cp_file:

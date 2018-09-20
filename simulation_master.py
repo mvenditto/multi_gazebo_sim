@@ -4,7 +4,7 @@ import multiprocessing
 import json
 import numpy as np
  
-ports = range(11360, 11368)
+ports = range(14000, 14050)
 m = multiprocessing.Manager()
 ports_queue = m.Queue()
 for p in ports:
@@ -13,12 +13,19 @@ for p in ports:
 SIM_MANAGER_URI = "ws://127.0.0.1:9090/simulation-manager"
 res = {}
 
+Z_THRESH = 0.20
+DEF_SIM_DURATION_S = 20
+INVALID_FITNESS = (float('-inf'),)
+
 def fitness(sim_result):
     try:
-        x,y = sim_result["result"]
+        x,y,max_z = sim_result["result"]
+        if max_z >= Z_THRESH:
+            return INVALID_FITNESS
         return (x,)
-    except:
-        return (float('-inf'),)
+    except Exception as ex:
+        print(ex)
+        return INVALID_FITNESS
 
 def send_job_and_wait(port, job):
     
@@ -47,7 +54,6 @@ def send_job_and_wait(port, job):
 
     #compute fitness value
     fitness_value = fitness(res[port])
-    #print("{0}:fitness={1}".format(port, fitness_value))
     del res[port]
     return fitness_value
 
@@ -59,20 +65,22 @@ def send_job(job, sim_manager_uri):
         
     asyncio.get_event_loop().run_until_complete(submit_job())
 
-def evaluate(indiv, ports_queue=None):
+def evaluate(indiv, d=DEF_SIM_DURATION_S, ports_queue=None):
     port = ports_queue.get()
+    print("port[{0}] locked!".format(port))
     weights = indiv.tolist()
     job = {
-        "duration":10,
+        "duration":d,
         "client_ws":"ws://localhost:{0}".format(port),
         "weights":weights
     }
     return send_job_and_wait(port, job)
 
+
 if __name__ == '__main__':
-    import best_elem
+    import best_indiv
     from multiprocessing import Queue
     import numpy as np
     queue = Queue()
     queue.put(11360)
-    evaluate(np.array(best_elem.weights), queue)
+    evaluate(np.array(best_indiv.weights), d=10000, ports_queue=queue)

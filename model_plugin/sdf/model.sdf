@@ -1,5 +1,6 @@
 <sdf version='1.5'>
   <model name='pexod'>
+    <pose>0 0 0.1 0 -0 0</pose>
     <link name='base_link'>
       <pose>0 0 0 0 -0 0</pose>
       <inertial>
@@ -156,14 +157,7 @@
             <radius>0.025</radius>
           </cylinder>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>500</mu>
-              <mu2>250</mu2>
-            </ode>
-          </friction>
-        </surface>
+        
       </collision>
       <visual name='leg_0_3_visual'>
         <pose>0.0125 -0.0475 0 1.5708 -0 0</pose>
@@ -318,14 +312,7 @@
             <radius>0.025</radius>
           </cylinder>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>500</mu>
-              <mu2>250</mu2>
-            </ode>
-          </friction>
-        </surface>
+        
       </collision>
       <visual name='leg_2_3_visual'>
         <pose>0.0125 -0.0475 0 1.5708 -0 0</pose>
@@ -480,14 +467,7 @@
             <radius>0.025</radius>
           </cylinder>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>500</mu>
-              <mu2>250</mu2>
-            </ode>
-          </friction>
-        </surface>
+        
       </collision>
       <visual name='leg_3_3_visual'>
         <pose>0.0125 0.0475 0 1.5708 -0 0</pose>
@@ -641,14 +621,7 @@
             <radius>0.025</radius>
           </cylinder>
         </geometry>
-        <surface>
-          <friction>
-            <ode>
-              <mu>500</mu>
-              <mu2>250</mu2>
-            </ode>
-          </friction>
-        </surface>
+        
       </collision>
       <visual name='leg_5_3_visual'>
         <pose>0.0125 0.0475 0 1.5708 -0 0</pose>
